@@ -91,32 +91,48 @@ if not cap.isOpened():
     print("camera failed")
     exit()
 
-def calc_geo(x1, x2):
+def calc_geo(x1, y1, x2, y2):
     w = abs(x2 - x1)
     cx = (x1 + x2) / 2
     x = cx - (960 / 2)
     D = 20100 / w
+    if y2 > 520:
+        D = 10
     f = 787.6
     X = D * x / f
     return D, X
 
 def process_forward(det):
     op = 0 #0 앞으로 1 물체 매우 근집 2 멀리서 보여서 슬슬 회피
-    min_d = 1000000
-    min_x = 0
+    min_D = 1000000
+    min_X = 0
     for x1, y1, x2, y2, conf, cls in det:
-        D, X = calc_geo(x1, x2)
-        abs(X) < 20
-        print(D, X)
+        if cls == 0 or cls == 1:
+            D, X = calc_geo(x1, y1, x2, y2)
+            if D < min_D:
+                min_D = D
+                min_X = X
+        elif cls == 2:
+            pass ##lane에 대한 처리
     
-    #     t = Twist()
-    #     t.angular.z = 
-    #     pub_motor.publish(t)
-    #     pub_motor.publish(Twist())
-    # else:
-    #     t = Twist()
-    #     t.linear.x = 0.05
-    #     pub_motor.publish(t)
+    if min_D < 15:
+        op = 1
+    elif min_D < 50:
+        if abs(min_X) < 15:
+            op = 2
+    else:
+        op = 0
+
+    t = Twist()
+    if op == 0:
+        t.linear.x = 0.15
+    elif op == 1:
+        t.angular.z = 2.0 #??왼쪽 맞음?
+    elif op == 2:
+        t.linear.x = 0.1
+        t.angular.z = 1.0  #??왼쪽?
+    pub_motor.publish(t)
+        
 
 while True:
     ret, image = cap.read()
@@ -124,8 +140,6 @@ while True:
         print('camera break')
         exit()
     
-    print('width : ', image.shape[1])
-
     dst = image
     if operation_mode == 0:
         pass
@@ -141,3 +155,5 @@ while True:
     # key = cv2.waitKey(100)
     # if key == ord('q'):
     #     break
+
+print('END.')

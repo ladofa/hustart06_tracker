@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import sys
 sys.path.append('yolov5')
@@ -69,7 +70,7 @@ def detect(src):
         # Rescale boxes from img_size to im0 size
         det[:, :4] = scale_coords(im.shape[2:], det[:, :4], src.shape).round()
 
-    return det
+    return np.array(det.cpu())
 
 def draw_boxes(src, det):
     dst = src.copy()

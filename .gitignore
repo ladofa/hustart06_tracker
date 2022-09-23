@@ -9,6 +9,7 @@ __pycache__/
 #yolo
 yolov5
 *.jpg
+saved
 
 
 # C extensions
