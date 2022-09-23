@@ -91,17 +91,23 @@ if not cap.isOpened():
     print("camera failed")
     exit()
 
+def calc_geo(x1, x2):
+    w = abs(x2 - x1)
+    cx = (x1 + x2) / 2
+    x = cx - (960 / 2)
+    D = 20100 / w
+    f = 787.6
+    X = D * x / f
+    return D, X
+
 def process_forward(det):
     op = 0 #0 앞으로 1 물체 매우 근집 2 멀리서 보여서 슬슬 회피
     min_d = 1000000
     min_x = 0
     for x1, y1, x2, y2, conf, cls in det:
-        w = abs(x1 - x2)
-        d = 10000 / w
-        if d < min_d:
-            min_d = d
-            min_x = (x1 + x2 - 960) / 2
-    print('min_d : ', min_d, 'min_x : ', min_x)
+        D, X = calc_geo(x1, x2)
+        abs(X) < 20
+        print(D, X)
     
     #     t = Twist()
     #     t.angular.z = 
