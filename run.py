@@ -2,6 +2,8 @@ import rospy
 from turtlebot3_msgs.msg import Sound
 from turtlebot3_msgs.msg import SensorState
 from geometry_msgs.msg import Twist
+import numpy as np
+import math
 
 operation_mode = 0 #0 - 멈춤(동시 누름),     1-동작1(1button)     2-동작2(2button)
 
@@ -103,25 +105,46 @@ def calc_geo(x1, y1, x2, y2):
     return D, X
 
 def process_forward(det):
-    op = 0 #0 앞으로 1 물체 매우 근집 2 멀리서 보여서 슬슬 회피
+    op = 0 #0 아무것도 없음 1 직진 2 왼쪽으로 커브 3 장애물 회피
     min_D = 1000000
     min_X = 0
+    list_lane = []
     for x1, y1, x2, y2, conf, cls in det:
         if cls == 0 or cls == 1:
+            #???
             D, X = calc_geo(x1, y1, x2, y2)
             if D < min_D:
                 min_D = D
                 min_X = X
         elif cls == 2:
-            pass ##lane에 대한 처리
-    
+            cx = (x2 + x1) / 2 - (960 / 2)
+            list_lane.append((y2, cx))
     if min_D < 15:
-        op = 1
-    elif min_D < 50:
-        if abs(min_X) < 15:
-            op = 2
+        op = 3
+    # elif min_D < 50:
+    #     if abs(min_X) < 15:
+    #         op = 2
+    # else:
+    #     op = 0
     else:
-        op = 0
+        list_lane.sort()
+        if len(list_lane) == 0:
+            op = 0
+        else:
+            cx = list_lane[-1][1] #lane의 위치
+            if len(list_lane) == 1:
+                theta = 0
+            else:
+                dy = list_lane[-2][0] - list_lane[-1][0]
+                dx = list_lane[-2][1] - list_lane[-1][0]
+                theta = math.atan2(dx, dy) / math.pi * 180 #lane의 각도
+            
+            if abs(cx) < 30 and abs(theta) < 20:
+                op = 1
+            else:
+                op = 2
+    
+
 
     t = Twist()
     if op == 0:
@@ -138,7 +161,7 @@ while True:
     ret, image = cap.read()
     if not ret:
         print('camera break')
-        exit()
+        break
     
     dst = image
     if operation_mode == 0:
