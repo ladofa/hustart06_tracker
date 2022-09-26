@@ -12,7 +12,7 @@ from utils.torch_utils import select_device, time_sync
 from utils.augmentations import letterbox
 
 # weights='../last.pt'
-weights='bots_n2.pt'  # model.pt path(s)#####################<-직접 지정해야하는거
+weights='bots_n3.pt'  # model.pt path(s)#####################<-직접 지정해야하는거
 # source='data/images'  # file/dir/URL/glob, 0 for webcam
 data='bots.yaml'  # dataset.yaml path ############################
 imgsz=(640, 640)  # inference size (height, width)
