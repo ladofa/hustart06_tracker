@@ -5,7 +5,7 @@ from geometry_msgs.msg import Twist
 import numpy as np
 import math
 
-operation_mode = 0 #0 - 멈춤(동시 누름),     1-동작1(1button)     2-동작2(2button)
+operation_mode = 2 #0 - 멈춤(동시 누름),     1-동작1(1button)     2-동작2(2button)
 
 prev_button = 0
 prev_button_sim = 0 #동시에 버튼을 눌렀을 경우 1
@@ -119,8 +119,11 @@ def process_forward(det):
         elif cls == 2:
             cx = (x2 + x1) / 2 - (960 / 2)
             list_lane.append((y2, cx))
+
+            
     if min_D < 15:
         op = 3
+        # print(op)
     # elif min_D < 50:
     #     if abs(min_X) < 15:
     #         op = 2
@@ -130,32 +133,36 @@ def process_forward(det):
         list_lane.sort()
         if len(list_lane) == 0:
             op = 0
+            cx = 0
+            theta = 0
         else:
             cx = list_lane[-1][1] #lane의 위치
             if len(list_lane) == 1:
                 theta = 0
             else:
-                dy = list_lane[-2][0] - list_lane[-1][0]
-                dx = list_lane[-2][1] - list_lane[-1][0]
+                dy = list_lane[-1][0] - list_lane[-2][0]
+                dx = list_lane[-2][1] - list_lane[-1][1]
                 theta = math.atan2(dx, dy) / math.pi * 180 #lane의 각도
             
             if abs(cx) < 30 and abs(theta) < 20:
                 op = 1
             else:
                 op = 2
+        # print(op, cx, theta)
     
+    # t = Twist()
+    # if op == 0:
+    #     t.linear.x = 0.15
+    # elif op == 1:
+    #     t.angular.z = 2.0 #??왼쪽 맞음?
+    # elif op == 2:
+    #     t.linear.x = 0.1
+    #     t.angular.z = 1.0  #??왼쪽?
+    # pub_motor.publish(t)
 
-
-    t = Twist()
-    if op == 0:
-        t.linear.x = 0.15
-    elif op == 1:
-        t.angular.z = 2.0 #??왼쪽 맞음?
-    elif op == 2:
-        t.linear.x = 0.1
-        t.angular.z = 1.0  #??왼쪽?
-    pub_motor.publish(t)
-        
+s = Sound()
+s.value = 0
+pub_sound.publish(s)
 
 while True:
     ret, image = cap.read()
@@ -165,13 +172,14 @@ while True:
     
     dst = image
     if operation_mode == 0:
-        pass
+        pub_motor.publish(Twist())
+        break
     elif operation_mode == 1:
         det = yolo_detector.detect(image) # N by .... x1, y1, x2, y2, conf, class
         process_forward(det)
         dst = yolo_detector.draw_boxes(image, det)
     elif operation_mode == 2:
-        pass
+        pub_motor.publish(Twist())
 
     # cv2.imshow('window', dst)
     cv2.imwrite('cur.jpg', dst)
