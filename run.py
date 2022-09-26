@@ -1,3 +1,5 @@
+DEBUG = True
+DISPLAY = True
 import rospy
 from turtlebot3_msgs.msg import Sound
 from turtlebot3_msgs.msg import SensorState
@@ -5,7 +7,7 @@ from geometry_msgs.msg import Twist
 import numpy as np
 import math
 
-operation_mode = 2 #0 - 멈춤(동시 누름),     1-동작1(1button)     2-동작2(2button)
+operation_mode = 2 #0 - 종료(동시 누름),     1-동작1(1button)     2-동작2(2button)
 
 prev_button = 0
 prev_button_sim = 0 #동시에 버튼을 눌렀을 경우 1
@@ -104,8 +106,13 @@ def calc_geo(x1, y1, x2, y2):
     X = D * x / f
     return D, X
 
+debug_index = 0
+debug_file = open('log.txt', 'w')
+
+
 def process_forward(det):
-    op = 0 #0 아무것도 없음 1 직진 2 왼쪽으로 커브 3 장애물 회피
+    op = 0 # 0 아무것도 없음 1 직진 2 왼쪽으로 커브 3 장애물 회피
+    
     min_D = 1000000
     min_X = 0
     list_lane = []
@@ -120,7 +127,7 @@ def process_forward(det):
             cx = (x2 + x1) / 2 - (960 / 2)
             list_lane.append((y2, cx))
 
-            
+    cx, theta = 0, 0
     if min_D < 15:
         op = 3
         # print(op)
@@ -133,8 +140,6 @@ def process_forward(det):
         list_lane.sort()
         if len(list_lane) == 0:
             op = 0
-            cx = 0
-            theta = 0
         else:
             cx = list_lane[-1][1] #lane의 위치
             if len(list_lane) == 1:
@@ -144,21 +149,37 @@ def process_forward(det):
                 dx = list_lane[-2][1] - list_lane[-1][1]
                 theta = math.atan2(dx, dy) / math.pi * 180 #lane의 각도
             
-            if abs(cx) < 30 and abs(theta) < 20:
+            if abs(cx) < 30 and abs(theta) < 10:
                 op = 1
             else:
                 op = 2
         # print(op, cx, theta)
+    if DEBUG:
+        debug_file.write(f'{debug_index}, {op}, {cx}, {theta}\n')
     
-    # t = Twist()
-    # if op == 0:
-    #     t.linear.x = 0.15
-    # elif op == 1:
-    #     t.angular.z = 2.0 #??왼쪽 맞음?
-    # elif op == 2:
-    #     t.linear.x = 0.1
-    #     t.angular.z = 1.0  #??왼쪽?
-    # pub_motor.publish(t)
+    t = Twist()
+    if op == 0:
+        #왼쪽으로 돌면서 라인을 찾음
+        t.linear.x = 0.15
+        t.angular.z = 0.7  
+
+    elif op == 1:
+        #직선
+        t.linear.x = 0.1
+    elif op == 2:
+        if cx > 50:
+            #오른쪽
+            t.linear.x = 0.1
+            t.angular.z = -0.8
+        else:
+            #왼쪽
+            t.linear.x = 0.15
+            t.angular.z = 0.7 
+            
+    elif op == 3:
+        t.linear.x = 0.0
+        t.angular.z = -0.22
+    pub_motor.publish(t)
 
 s = Sound()
 s.value = 0
@@ -171,18 +192,22 @@ while True:
         break
     
     dst = image
-    if operation_mode == 0:
+    if operation_mode == 0: #버튼 두개
         pub_motor.publish(Twist())
         break
     elif operation_mode == 1:
         det = yolo_detector.detect(image) # N by .... x1, y1, x2, y2, conf, class
         process_forward(det)
         dst = yolo_detector.draw_boxes(image, det)
+        if DEBUG:
+            cv2.imwrite('debug/%.5d.jpg' % debug_index, dst)
+            debug_index += 1
     elif operation_mode == 2:
         pub_motor.publish(Twist())
 
     # cv2.imshow('window', dst)
-    cv2.imwrite('cur.jpg', dst)
+    if DISPLAY:
+        cv2.imwrite('cur.jpg', dst)
     # key = cv2.waitKey(100)
     # if key == ord('q'):
     #     break

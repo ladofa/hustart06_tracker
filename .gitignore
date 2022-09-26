@@ -10,7 +10,8 @@ __pycache__/
 yolov5
 *.jpg
 saved
-
+debug
+log.txt
 
 # C extensions
 *.so
