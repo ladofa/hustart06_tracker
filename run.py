@@ -1,11 +1,12 @@
-DEBUG = True
-DISPLAY = True
+DEBUG = False
+DISPLAY = False
 import rospy
 from turtlebot3_msgs.msg import Sound
 from turtlebot3_msgs.msg import SensorState
 from geometry_msgs.msg import Twist
 import numpy as np
 import math
+import time
 
 operation_mode = 2 #0 - 종료(동시 누름),     1-동작1(1button)     2-동작2(2button)
 
@@ -109,8 +110,9 @@ def calc_geo(x1, y1, x2, y2):
 debug_index = 0
 debug_file = open('log.txt', 'w')
 
-
+op3_count = 0
 def process_forward(det):
+    global op3_count
     op = 0 # 0 아무것도 없음 1 직진 2 왼쪽으로 커브 3 장애물 회피
     
     min_D = 1000000
@@ -128,8 +130,14 @@ def process_forward(det):
             list_lane.append((y2, cx))
 
     cx, theta = 0, 0
-    if min_D < 15:
+    
+
+    if op3_count > 0:
         op = 3
+        op3_count -= 1
+    elif min_D < 15:
+        op = 3
+        op3_count = 20
         # print(op)
     # elif min_D < 50:
     #     if abs(min_X) < 15:
@@ -156,6 +164,7 @@ def process_forward(det):
         # print(op, cx, theta)
     if DEBUG:
         debug_file.write(f'{debug_index}, {op}, {cx}, {theta}\n')
+
     
     t = Twist()
     if op == 0:
@@ -180,6 +189,7 @@ def process_forward(det):
         t.linear.x = 0.0
         t.angular.z = -0.22
     pub_motor.publish(t)
+
 
 s = Sound()
 s.value = 0
